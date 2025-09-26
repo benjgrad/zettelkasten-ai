@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
-from src.services import rss_service, entity_service, vector_storage
+from src.services import rss_service, entity_service, vector_storage, diagram_generator
 
 router = APIRouter()
 
@@ -33,6 +33,13 @@ class SemanticSearchResponse(BaseModel):
     result: Dict[str, Any]
 
 class BatchEmbeddingResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class DiagramGenerationRequest(BaseModel):
+    article_id: int
+
+class DiagramGenerationResponse(BaseModel):
     message: str
     result: Dict[str, Any]
 
@@ -123,3 +130,21 @@ async def get_embedding_stats():
         return {"message": "Vector storage statistics", "result": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+@router.post("/diagrams/generate", response_model=DiagramGenerationResponse)
+async def generate_diagram(request: DiagramGenerationRequest):
+    """Generate MermaidJS diagram from article entities"""
+    try:
+        result = diagram_generator.generate_diagram_from_article(request.article_id)
+
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+
+        return DiagramGenerationResponse(
+            message=f"Generated MermaidJS diagram for article {request.article_id} with {result['entities_count']} entities",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Diagram generation failed: {str(e)}")

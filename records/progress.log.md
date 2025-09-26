@@ -59,3 +59,37 @@
 - Feed Reliability: Reuters had network issues - need strategy for unreliable feeds
 
 **Next step:** Step 1.3 - Create basic entity extraction with spaCy
+
+### Step 1.3: Entity Extraction with spaCy - COMPLETED ✅
+
+**Outcome**: PASS - All acceptance criteria exceeded
+
+**What was done:**
+- Downloaded and installed spaCy en_core_web_sm language model
+- Created EntityExtractionService with PERSON, ORG, GPE entity recognition
+- Added entities table to SQLite database with article relationships
+- Implemented /entities/extract POST endpoint for processing individual articles
+- Created comprehensive validation test script with 10 test cases
+- Enhanced entity extraction accuracy with prefix handling and deduplication
+
+**Acceptance Criteria Results:**
+- ✅ Extract PERSON, ORG, GPE entities with >80% accuracy: Achieved 83.95% F1 score (exceeds requirement)
+- ✅ Process test article and verify entities extracted correctly: API endpoint tested successfully
+
+**Key artifacts:**
+- src/services/entity_extraction.py: EntityExtractionService with spaCy NER
+- src/models/__init__.py: Enhanced with entities table and database methods
+- src/api/endpoints.py: New /entities/extract endpoint with proper error handling
+- test_entity_accuracy.py: Validation script with precision/recall metrics
+- Commit: 79122d9 on feat/step-1-3-entity-extraction branch
+
+**Dependencies discovered:**
+- spaCy model download required separate installation step
+- sqlite3 import needed in entity extraction service
+
+**Validation metrics:**
+- Precision: 80.95% | Recall: 87.18% | F1 Score: 83.95%
+- Successfully processed 10 test cases with news article content
+- API endpoint functional with proper JSON responses
+
+**Next step:** Step 1.4 - Set up SQLite + ChromaDB storage with basic schema

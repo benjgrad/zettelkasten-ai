@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
-from src.services import rss_service, entity_service
+from src.services import rss_service, entity_service, vector_storage
 
 router = APIRouter()
 
@@ -21,6 +21,18 @@ class EntityExtractionRequest(BaseModel):
     article_id: int
 
 class EntityExtractionResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class SemanticSearchRequest(BaseModel):
+    query: str
+    limit: int = 10
+
+class SemanticSearchResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class BatchEmbeddingResponse(BaseModel):
     message: str
     result: Dict[str, Any]
 
@@ -71,3 +83,43 @@ async def extract_entities(request: EntityExtractionRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")
+
+@router.post("/search/semantic", response_model=SemanticSearchResponse)
+async def semantic_search(request: SemanticSearchRequest):
+    """Perform semantic search on articles"""
+    try:
+        result = vector_storage.semantic_search(request.query, request.limit)
+
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return SemanticSearchResponse(
+            message=f"Found {result['results_count']} results for query: '{request.query}'",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Semantic search failed: {str(e)}")
+
+@router.post("/embeddings/batch", response_model=BatchEmbeddingResponse)
+async def batch_create_embeddings():
+    """Create embeddings for all articles"""
+    try:
+        result = vector_storage.batch_add_embeddings()
+
+        return BatchEmbeddingResponse(
+            message=f"Processed {result['total_articles']} articles: {result['successful']} successful, {result['failed']} failed",
+            result=result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch embedding creation failed: {str(e)}")
+
+@router.get("/embeddings/stats")
+async def get_embedding_stats():
+    """Get vector storage statistics"""
+    try:
+        stats = vector_storage.get_collection_stats()
+        return {"message": "Vector storage statistics", "result": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")

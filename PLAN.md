@@ -48,9 +48,10 @@ None - starting fresh implementation
   - *Acceptance Criteria*: Fetch 10+ articles daily from Reuters, BBC, MIT Tech Review
   - *Testing*: /ingest/rss endpoint processes feeds and stores in SQLite
   - *Status*: COMPLETED ✅ (2025-09-26) - Successfully ingested 30 articles from BBC and MIT Tech Review, commit c34441e
-- [ ] **Step 1.3**: Create basic entity extraction with spaCy
+- [x] **Step 1.3**: Create basic entity extraction with spaCy
   - *Acceptance Criteria*: Extract PERSON, ORG, GPE entities with >80% accuracy on news articles
   - *Testing*: Process test article and verify entities extracted correctly
+  - *Status*: COMPLETED ✅ (2025-09-26) - Achieved 83.95% F1 score, endpoint functional, commit 79122d9
 - [ ] **Step 1.4**: Set up SQLite + ChromaDB storage with basic schema
   - *Acceptance Criteria*: Store articles with metadata, embeddings generated for semantic search
   - *Testing*: Insert test article, perform similarity search, retrieve results

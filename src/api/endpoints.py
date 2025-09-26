@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
-from src.services import rss_service
+from src.services import rss_service, entity_service
 
 router = APIRouter()
 
@@ -16,6 +16,13 @@ class RSSIngestResponse(BaseModel):
     message: str
     results: List[Dict[str, Any]]
     total_feeds_processed: int
+
+class EntityExtractionRequest(BaseModel):
+    article_id: int
+
+class EntityExtractionResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -46,3 +53,21 @@ async def rss_ingest():
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"RSS ingestion failed: {str(e)}")
+
+@router.post("/entities/extract", response_model=EntityExtractionResponse)
+async def extract_entities(request: EntityExtractionRequest):
+    """Extract entities from a specific article"""
+    try:
+        result = entity_service.process_article(request.article_id)
+
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+
+        return EntityExtractionResponse(
+            message=f"Extracted {result['entities_found']} entities from article {request.article_id}",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")

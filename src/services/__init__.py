@@ -75,3 +75,5 @@ class RSSIngestionService:
         return results
 
 rss_service = RSSIngestionService()
+
+from .entity_extraction import entity_service

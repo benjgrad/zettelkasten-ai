@@ -44,9 +44,10 @@ None - starting fresh implementation
   - *Acceptance Criteria*: GET /health returns 200, POST /ingest/manual endpoint exists
   - *Testing*: curl localhost:8000/health returns {"status": "ok"}
   - *Status*: COMPLETED ✅ (2025-09-26) - All acceptance criteria met, commit 01d3d75
-- [ ] **Step 1.2**: Implement RSS feed ingestion for 3-5 test feeds
+- [x] **Step 1.2**: Implement RSS feed ingestion for 3-5 test feeds
   - *Acceptance Criteria*: Fetch 10+ articles daily from Reuters, BBC, MIT Tech Review
   - *Testing*: /ingest/rss endpoint processes feeds and stores in SQLite
+  - *Status*: COMPLETED ✅ (2025-09-26) - Successfully ingested 30 articles from BBC and MIT Tech Review, commit c34441e
 - [ ] **Step 1.3**: Create basic entity extraction with spaCy
   - *Acceptance Criteria*: Extract PERSON, ORG, GPE entities with >80% accuracy on news articles
   - *Testing*: Process test article and verify entities extracted correctly
@@ -173,6 +174,7 @@ None - starting fresh implementation
 - **Vector Search Performance**: Will ChromaDB scale adequately for 1000+ articles, or need earlier migration?
 - **LLM Costs**: What will OpenAI API costs be at target usage levels (need cost modeling)?
 - **Entity Recognition Accuracy**: How well will spaCy perform on domain-specific content vs news articles?
+- **Feed Reliability**: Reuters feed had network connectivity issues during testing - need strategy for handling unreliable feeds
 
 ### Product Unknowns
 - **User Adoption**: Will users find MermaidJS diagrams useful for systems thinking vs more advanced visualizations?

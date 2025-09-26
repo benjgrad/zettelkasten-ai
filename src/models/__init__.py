@@ -33,6 +33,20 @@ class DatabaseManager:
                     FOREIGN KEY (feed_id) REFERENCES feeds (id)
                 )
             """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS entities (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    article_id INTEGER,
+                    text TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    start_pos INTEGER,
+                    end_pos INTEGER,
+                    confidence REAL DEFAULT 1.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (article_id) REFERENCES articles (id)
+                )
+            """)
             conn.commit()
 
     def add_feed(self, name: str, url: str) -> int:
@@ -75,5 +89,29 @@ class DatabaseManager:
                 (feed_id,)
             )
             conn.commit()
+
+    def add_entity(self, article_id: int, text: str, label: str,
+                   start_pos: int, end_pos: int, confidence: float = 1.0) -> int:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                """INSERT INTO entities
+                   (article_id, text, label, start_pos, end_pos, confidence)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (article_id, text, label, start_pos, end_pos, confidence)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_entities_by_article(self, article_id: int) -> List[Dict[str, Any]]:
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM entities WHERE article_id = ? ORDER BY start_pos",
+                (article_id,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_connection(self):
+        return sqlite3.connect(self.db_path)
 
 db = DatabaseManager()

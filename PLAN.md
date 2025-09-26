@@ -52,14 +52,16 @@ None - starting fresh implementation
   - *Acceptance Criteria*: Extract PERSON, ORG, GPE entities with >80% accuracy on news articles
   - *Testing*: Process test article and verify entities extracted correctly
   - *Status*: COMPLETED ✅ (2025-09-26) - Achieved 83.95% F1 score, endpoint functional, commit 79122d9
-- [ ] **Step 1.4**: Set up SQLite + ChromaDB storage with basic schema
+- [x] **Step 1.4**: Set up SQLite + ChromaDB storage with basic schema
   - *Acceptance Criteria*: Store articles with metadata, embeddings generated for semantic search
   - *Testing*: Insert test article, perform similarity search, retrieve results
+  - *Status*: COMPLETED ✅ (2025-09-26) - ChromaDB + sentence-transformers integrated, semantic search functional, commit 39d2b6c
 
 **Week 3-4: Diagram Generation**
-- [ ] **Step 2.1**: Implement basic MermaidJS flowchart generator
+- [x] **Step 2.1**: Implement basic MermaidJS flowchart generator
   - *Acceptance Criteria*: Generate valid MermaidJS from entities/relationships
   - *Testing*: Input test entities, output renders in mermaid.live
+  - *Status*: COMPLETED ✅ (2025-09-26) - MermaidJS generator service implemented, /diagrams/generate endpoint functional, commit 44328bb
 - [ ] **Step 2.2**: Add MermaidJS syntax validation and error handling
   - *Acceptance Criteria*: Detect invalid syntax, provide specific error messages
   - *Testing*: Validate both valid and invalid MermaidJS code samples

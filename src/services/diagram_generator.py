@@ -181,25 +181,57 @@ class DiagramGenerator:
         return encoded
 
     def validate_mermaid_syntax(self, mermaid_code: str) -> Dict[str, Any]:
-        """Basic validation of MermaidJS syntax"""
+        """Enhanced validation of MermaidJS syntax with detailed error detection"""
         errors = []
         warnings = []
 
         lines = mermaid_code.split('\n')
 
         # Check if it starts with flowchart declaration
-        if not any(line.strip().startswith('flowchart') for line in lines):
-            errors.append("Missing 'flowchart' declaration")
+        flowchart_found = False
+        for line in lines:
+            if line.strip().startswith('flowchart'):
+                flowchart_found = True
+                # Validate flowchart direction
+                parts = line.strip().split()
+                if len(parts) == 2 and parts[1] not in ['TD', 'TB', 'BT', 'RL', 'LR']:
+                    warnings.append(f"Unknown flowchart direction '{parts[1]}'. Valid: TD, TB, BT, RL, LR")
+                break
 
-        # Check for basic syntax issues
+        if not flowchart_found:
+            errors.append("Missing 'flowchart' declaration at start")
+
+        # Enhanced syntax validation
         for i, line in enumerate(lines, 1):
+            line_orig = line
             line = line.strip()
-            if not line or line.startswith('flowchart') or line.startswith('subgraph') or line.startswith('end') or line.startswith('style'):
+
+            # Skip empty lines and known valid constructs
+            if not line or line.startswith('flowchart') or line.startswith('subgraph') or line.startswith('end'):
                 continue
 
-            # Check for node definitions and relationships
-            if '-->' not in line and '[' not in line and ']' not in line:
-                warnings.append(f"Line {i}: Potentially invalid syntax - {line}")
+            # Validate style definitions
+            if line.startswith('style'):
+                error_msg = self._validate_style_line(line, i)
+                if error_msg:
+                    errors.append(error_msg)
+                continue
+
+            # Validate node definitions and relationships
+            if '-->' in line:
+                error_msg = self._validate_relationship_line(line, i)
+                if error_msg:
+                    errors.append(error_msg)
+            elif '[' in line and ']' in line and '-->' not in line:
+                error_msg = self._validate_node_line(line, i)
+                if error_msg:
+                    errors.append(error_msg)
+            else:
+                # Check for common mistakes
+                if any(char in line for char in ['(', ')', '{', '}']) and not line.startswith('subgraph'):
+                    warnings.append(f"Line {i}: Possible invalid node syntax - use square brackets [] for nodes")
+                elif line and not line.startswith(' '):
+                    warnings.append(f"Line {i}: Content should be indented in flowchart")
 
         return {
             "valid": len(errors) == 0,
@@ -207,5 +239,87 @@ class DiagramGenerator:
             "warnings": warnings,
             "lines_checked": len(lines)
         }
+
+    def _validate_style_line(self, line: str, line_num: int) -> str:
+        """Validate style definition syntax"""
+        parts = line.split()
+        if len(parts) < 3:
+            return f"Line {line_num}: Style definition incomplete - format: 'style nodeId fill:#color'"
+
+        if not parts[1].replace('_', '').replace('-', '').isalnum():
+            return f"Line {line_num}: Invalid node ID '{parts[1]}' in style definition"
+
+        style_props = ' '.join(parts[2:])
+        if 'fill:' in style_props and not any(c in style_props for c in ['#', 'rgb', 'hsl']):
+            return f"Line {line_num}: Invalid color format in style - use #hex, rgb(), or hsl()"
+
+        return None
+
+    def _validate_relationship_line(self, line: str, line_num: int) -> str:
+        """Validate relationship/arrow syntax"""
+        if '-->' not in line:
+            return None
+
+        parts = line.split('-->')
+        if len(parts) != 2:
+            return f"Line {line_num}: Invalid relationship syntax - use 'nodeA --> nodeB'"
+
+        left_part = parts[0].strip()
+        right_part = parts[1].strip()
+
+        # Validate node identifiers
+        if not left_part or not right_part:
+            return f"Line {line_num}: Missing node identifier in relationship"
+
+        # Extract node IDs (handle both simple IDs and node definitions)
+        left_node = self._extract_node_id(left_part)
+        right_node = self._extract_node_id(right_part)
+
+        if not left_node or not right_node:
+            return f"Line {line_num}: Unable to extract valid node identifiers from relationship"
+
+        # Check for valid node IDs
+        for node, side in [(left_node, 'left'), (right_node, 'right')]:
+            if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', node):
+                return f"Line {line_num}: Invalid {side} node ID '{node}' - use alphanumeric and underscore only"
+
+        return None
+
+    def _extract_node_id(self, node_part: str) -> str:
+        """Extract node ID from either simple ID or node definition"""
+        # If it contains brackets, extract the ID before the first bracket
+        if '[' in node_part:
+            return node_part.split('[')[0].strip()
+        # Otherwise, it's just a simple node ID
+        return node_part.strip()
+
+    def _validate_node_line(self, line: str, line_num: int) -> str:
+        """Validate node definition syntax"""
+        # Check for balanced brackets
+        if line.count('[') != line.count(']'):
+            return f"Line {line_num}: Unbalanced square brackets in node definition"
+
+        # Check for quotes balance in node labels
+        quote_count = line.count('"')
+        if quote_count % 2 != 0:
+            return f"Line {line_num}: Unbalanced quotes in node label"
+
+        # Extract node ID (before the first bracket)
+        if '[' in line:
+            node_id = line.split('[')[0].strip()
+            if node_id:
+                if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', node_id):
+                    return f"Line {line_num}: Invalid node ID '{node_id}' - must start with letter, use alphanumeric and underscore only"
+
+        # Check for common syntax errors
+        if '[' in line and ']' in line:
+            bracket_content = line[line.find('[')+1:line.rfind(']')]
+            if bracket_content.startswith('"') and bracket_content.endswith('"'):
+                # Valid quoted content
+                pass
+            elif '"' in bracket_content:
+                return f"Line {line_num}: Inconsistent quoting in node label - quote entire label or none"
+
+        return None
 
 diagram_generator = DiagramGenerator()

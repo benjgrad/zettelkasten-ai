@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
-from src.services import rss_service, entity_service, vector_storage, diagram_generator
+from src.services import rss_service, entity_service, vector_storage, diagram_generator, diagram_refinement
 
 router = APIRouter()
 
@@ -40,6 +40,15 @@ class DiagramGenerationRequest(BaseModel):
     article_id: int
 
 class DiagramGenerationResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class DiagramRefinementRequest(BaseModel):
+    current_mermaid: str
+    feedback: str
+    context: Dict[str, Any] = None
+
+class DiagramRefinementResponse(BaseModel):
     message: str
     result: Dict[str, Any]
 
@@ -148,3 +157,25 @@ async def generate_diagram(request: DiagramGenerationRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagram generation failed: {str(e)}")
+
+@router.post("/diagrams/refine", response_model=DiagramRefinementResponse)
+async def refine_diagram(request: DiagramRefinementRequest):
+    """Refine MermaidJS diagram based on user feedback using OpenAI GPT-4"""
+    try:
+        result = diagram_refinement.refine_diagram(
+            current_mermaid=request.current_mermaid,
+            feedback=request.feedback,
+            context=request.context
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return DiagramRefinementResponse(
+            message=f"Diagram refined based on feedback: '{request.feedback}'",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Diagram refinement failed: {str(e)}")

@@ -5,6 +5,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.services.diagram_refinement import diagram_refinement
+from src.services.diagram_generator import diagram_generator
 
 def test_diagram_refinement():
     print("🧪 Running Diagram Refinement Validation Tests")
@@ -100,7 +101,7 @@ def test_diagram_refinement():
     print("\n3. Testing refined diagram validation...")
 
     final_diagram = iterative_result["final_diagram"]
-    validation_result = diagram_refinement.diagram_generator.validate_mermaid_syntax(final_diagram)
+    validation_result = diagram_generator.validate_mermaid_syntax(final_diagram)
 
     if not validation_result["valid"]:
         print(f"❌ FAIL: Final refined diagram has validation errors - {validation_result['errors']}")

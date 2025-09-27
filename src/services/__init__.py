@@ -75,3 +75,8 @@ class RSSIngestionService:
         return results
 
 rss_service = RSSIngestionService()
+
+from .entity_extraction import entity_service
+from .vector_storage import vector_storage
+from .diagram_generator import diagram_generator
+from .diagram_refinement import diagram_refinement

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
-from src.services import rss_service
+from src.services import rss_service, entity_service, vector_storage, diagram_generator, diagram_refinement
 
 router = APIRouter()
 
@@ -16,6 +16,41 @@ class RSSIngestResponse(BaseModel):
     message: str
     results: List[Dict[str, Any]]
     total_feeds_processed: int
+
+class EntityExtractionRequest(BaseModel):
+    article_id: int
+
+class EntityExtractionResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class SemanticSearchRequest(BaseModel):
+    query: str
+    limit: int = 10
+
+class SemanticSearchResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class BatchEmbeddingResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class DiagramGenerationRequest(BaseModel):
+    article_id: int
+
+class DiagramGenerationResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
+
+class DiagramRefinementRequest(BaseModel):
+    current_mermaid: str
+    feedback: str
+    context: Dict[str, Any] = None
+
+class DiagramRefinementResponse(BaseModel):
+    message: str
+    result: Dict[str, Any]
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -46,3 +81,101 @@ async def rss_ingest():
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"RSS ingestion failed: {str(e)}")
+
+@router.post("/entities/extract", response_model=EntityExtractionResponse)
+async def extract_entities(request: EntityExtractionRequest):
+    """Extract entities from a specific article"""
+    try:
+        result = entity_service.process_article(request.article_id)
+
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+
+        return EntityExtractionResponse(
+            message=f"Extracted {result['entities_found']} entities from article {request.article_id}",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")
+
+@router.post("/search/semantic", response_model=SemanticSearchResponse)
+async def semantic_search(request: SemanticSearchRequest):
+    """Perform semantic search on articles"""
+    try:
+        result = vector_storage.semantic_search(request.query, request.limit)
+
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return SemanticSearchResponse(
+            message=f"Found {result['results_count']} results for query: '{request.query}'",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Semantic search failed: {str(e)}")
+
+@router.post("/embeddings/batch", response_model=BatchEmbeddingResponse)
+async def batch_create_embeddings():
+    """Create embeddings for all articles"""
+    try:
+        result = vector_storage.batch_add_embeddings()
+
+        return BatchEmbeddingResponse(
+            message=f"Processed {result['total_articles']} articles: {result['successful']} successful, {result['failed']} failed",
+            result=result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch embedding creation failed: {str(e)}")
+
+@router.get("/embeddings/stats")
+async def get_embedding_stats():
+    """Get vector storage statistics"""
+    try:
+        stats = vector_storage.get_collection_stats()
+        return {"message": "Vector storage statistics", "result": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+@router.post("/diagrams/generate", response_model=DiagramGenerationResponse)
+async def generate_diagram(request: DiagramGenerationRequest):
+    """Generate MermaidJS diagram from article entities"""
+    try:
+        result = diagram_generator.generate_diagram_from_article(request.article_id)
+
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+
+        return DiagramGenerationResponse(
+            message=f"Generated MermaidJS diagram for article {request.article_id} with {result['entities_count']} entities",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Diagram generation failed: {str(e)}")
+
+@router.post("/diagrams/refine", response_model=DiagramRefinementResponse)
+async def refine_diagram(request: DiagramRefinementRequest):
+    """Refine MermaidJS diagram based on user feedback using OpenAI GPT-4"""
+    try:
+        result = diagram_refinement.refine_diagram(
+            current_mermaid=request.current_mermaid,
+            feedback=request.feedback,
+            context=request.context
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return DiagramRefinementResponse(
+            message=f"Diagram refined based on feedback: '{request.feedback}'",
+            result=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Diagram refinement failed: {str(e)}")

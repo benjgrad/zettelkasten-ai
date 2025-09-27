@@ -25,7 +25,7 @@ Build a conversational platform that ingests information from multiple sources (
 ### Current Phase: Phase 1 - MVP Prototype
 
 ### Next Actionable Step
-Implement RSS feed ingestion service for 3-5 test feeds (Reuters, BBC, MIT Tech Review). Create /ingest/rss endpoint that fetches articles and stores them in SQLite with basic metadata schema.
+**Step 2.4**: Build Gradio chatbot interface with diagram rendering - Chat interface displays rendered MermaidJS diagrams and supports user feedback for diagram refinement. Testing involves submitting query, receiving rendered diagram, providing feedback like "make it simpler", and receiving refined diagram.
 
 ### In Progress
 None - starting fresh implementation
@@ -66,12 +66,13 @@ None - starting fresh implementation
   - *Acceptance Criteria*: Detect invalid syntax, provide specific error messages
   - *Testing*: Validate both valid and invalid MermaidJS code samples
   - *Status*: COMPLETED ✅ (2025-09-26) - Enhanced validation with 8 error types, comprehensive test suite, commit 1adf3f2
-- [ ] **Step 2.3**: Create OpenAI GPT-4 integration for diagram refinement
+- [x] **Step 2.3**: Create OpenAI GPT-4 integration for diagram refinement
   - *Acceptance Criteria*: Accept user feedback like "make it simpler", update diagram
   - *Testing*: Refine test diagram through 3 iterations successfully
+  - *Status*: COMPLETED ✅ (2025-09-26) - All acceptance criteria met, 3-iteration refinement validated, API endpoint functional, commit f6648e5
 - [ ] **Step 2.4**: Build Gradio chatbot interface with diagram rendering
-  - *Acceptance Criteria*: Chat interface displays rendered MermaidJS diagrams
-  - *Testing*: Submit query, receive rendered diagram in web interface
+  - *Acceptance Criteria*: Chat interface displays rendered MermaidJS diagrams, supports user feedback for diagram refinement
+  - *Testing*: Submit query, receive rendered diagram, provide feedback like "make it simpler", receive refined diagram
 
 **Week 5-6: Integration & Testing**
 - [ ] **Step 3.1**: Implement end-to-end workflow from query to diagram

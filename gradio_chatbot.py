@@ -22,7 +22,7 @@ class DiagramChatbot:
         self.current_diagram_context = None
         self.backend_url = "http://localhost:8000"
 
-    def process_message(self, message: str, history: List[Tuple[str, str]]) -> Tuple[str, str]:
+    def process_message(self, message: str, history: List[dict]) -> Tuple[str, str]:
         """Process user message and return response with diagram"""
         try:
             # Check if this is feedback for an existing diagram
@@ -46,7 +46,7 @@ class DiagramChatbot:
         ]
         return any(keyword in message.lower() for keyword in feedback_keywords)
 
-    def _handle_new_query(self, message: str, history: List[Tuple[str, str]]) -> Tuple[str, str]:
+    def _handle_new_query(self, message: str, history: List[dict]) -> Tuple[str, str]:
         """Handle new diagram generation query"""
         # Search for relevant articles using semantic search
         search_result = vector_storage.semantic_search(message, limit=3)
@@ -81,11 +81,11 @@ You can provide feedback to improve the diagram, such as:
 - "Organize it better"
 - "Focus on the main relationships"
 
-**Similarity Score:** {best_match['similarity']:.2f}"""
+**Similarity Score:** {best_match['similarity_score']:.2f}"""
 
         return response, self.current_diagram
 
-    def _handle_diagram_feedback(self, feedback: str, history: List[Tuple[str, str]]) -> Tuple[str, str]:
+    def _handle_diagram_feedback(self, feedback: str, history: List[dict]) -> Tuple[str, str]:
         """Handle diagram refinement feedback"""
         if not self.current_diagram:
             return "Please generate a diagram first before providing feedback.", ""
@@ -114,35 +114,41 @@ You can continue providing feedback to further improve the diagram."""
         return response, self.current_diagram
 
     def render_mermaid_diagram(self, mermaid_code: str) -> str:
-        """Render MermaidJS code as HTML"""
+        """Render MermaidJS code as HTML with fallback"""
         if not mermaid_code or not mermaid_code.strip():
             return "<p>No diagram to display</p>"
 
-        # Create HTML with Mermaid.js
+        # Generate a unique ID for this diagram
+        import hashlib
+        import html
+        diagram_id = hashlib.md5(mermaid_code.encode()).hexdigest()[:8]
+        
+        # Escape HTML content properly
+        escaped_code = html.escape(mermaid_code)
+        
+        # Create simple HTML display with both visual and code views
         html_template = f"""
-        <div id="mermaid-container" style="text-align: center; padding: 20px;">
-            <div class="mermaid">
-{mermaid_code}
+        <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin: 10px 0;">
+            <div style="background-color: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin: 10px auto;">
+                <h4 style="margin-top: 0; color: #333;">Generated Mermaid Diagram</h4>
+                <p style="color: #666; font-size: 14px;">Copy the code below and paste it into <a href="https://mermaid.live" target="_blank">mermaid.live</a> to view the diagram:</p>
+                <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin: 15px 0;">
+                    <pre style="margin: 0; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;">{escaped_code}</pre>
+                </div>
+                <div style="margin-top: 15px;">
+                    <a href="https://mermaid.live" target="_blank" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        📊 Open in Mermaid Live Editor
+                    </a>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
+                    <strong>Instructions:</strong> 
+                    1. Click the link above
+                    2. Delete any existing code in the editor
+                    3. Paste the code from the box above
+                    4. The diagram will render automatically
+                </div>
             </div>
         </div>
-
-        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-        <script>
-            mermaid.initialize({{startOnLoad: true, theme: 'default'}});
-        </script>
-
-        <style>
-            .mermaid {{
-                font-family: 'Arial', sans-serif;
-                background-color: white;
-                border: 1px solid #e1e5e9;
-                border-radius: 8px;
-                padding: 20px;
-                margin: 10px auto;
-                max-width: 100%;
-                overflow-x: auto;
-            }}
-        </style>
         """
         return html_template
 
@@ -177,7 +183,7 @@ def create_interface():
                     height=400,
                     show_label=True,
                     container=True,
-                    type="tuples"
+                    type="messages"
                 )
 
                 msg_input = gr.Textbox(
@@ -211,15 +217,26 @@ def create_interface():
             if not message.strip():
                 return history, ""
 
-            response, diagram_mermaid = chatbot.process_message(message, history)
+            try:
+                response, diagram_mermaid = chatbot.process_message(message, history)
+                print(f"DEBUG: Response: {response[:100]}...")
+                print(f"DEBUG: Diagram code length: {len(diagram_mermaid) if diagram_mermaid else 0}")
+                
+                # Update history with messages format
+                history.append({"role": "user", "content": message})
+                history.append({"role": "assistant", "content": response})
 
-            # Update history
-            history.append((message, response))
+                # Update diagram display
+                diagram_html = chatbot.render_mermaid_diagram(diagram_mermaid) if diagram_mermaid else "<p>No diagram to display</p>"
 
-            # Update diagram display
-            diagram_html = chatbot.render_mermaid_diagram(diagram_mermaid) if diagram_mermaid else "<p>No diagram to display</p>"
-
-            return history, "", diagram_html, diagram_mermaid
+                return history, "", diagram_html, diagram_mermaid
+                
+            except Exception as e:
+                print(f"DEBUG: Error in handle_message: {e}")
+                error_response = f"Error processing message: {str(e)}"
+                history.append({"role": "user", "content": message})
+                history.append({"role": "assistant", "content": error_response})
+                return history, "", "<p>Error occurred</p>", ""
 
         def clear_all():
             chatbot.clear_conversation()
